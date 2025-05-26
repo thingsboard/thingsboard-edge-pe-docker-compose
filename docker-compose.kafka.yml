@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 # ThingsBoard, Inc. ("COMPANY") CONFIDENTIAL
 #
@@ -30,36 +29,28 @@
 # OR TO MANUFACTURE, USE, OR SELL ANYTHING THAT IT  MAY DESCRIBE, IN WHOLE OR IN PART.
 #
 
-set -e
-
-source compose-utils.sh
-
-COMPOSE_VERSION=$(composeVersion) || exit $?
-
-ADDITIONAL_COMPOSE_QUEUE_ARGS=$(additionalComposeQueueArgs) || exit $?
-
-ADDITIONAL_COMPOSE_ARGS=$(additionalComposeArgs) || exit $?
-
-ADDITIONAL_CACHE_ARGS=$(additionalComposeCacheArgs) || exit $?
-
-COMPOSE_ARGS_PULL="\
-      -f docker-compose.yml ${ADDITIONAL_CACHE_ARGS} ${ADDITIONAL_COMPOSE_ARGS} \
-      pull"
-
-COMPOSE_ARGS_BUILD="\
-      -f docker-compose.yml ${ADDITIONAL_CACHE_ARGS} ${ADDITIONAL_COMPOSE_ARGS} \
-      up -d --no-deps --build"
-
-case $COMPOSE_VERSION in
-    V2)
-        docker compose $COMPOSE_ARGS_PULL $@
-        docker compose $COMPOSE_ARGS_BUILD $@
-    ;;
-    V1)
-        docker-compose $COMPOSE_ARGS_PULL $@
-        docker-compose $COMPOSE_ARGS_BUILD $@
-    ;;
-    *)
-        # unknown option
-    ;;
-esac
+services:
+  kafka:
+    restart: always
+    image: "bitnami/kafka:3.7.0"
+    ports:
+      - "9092:9092"
+    env_file:
+      - ../kafka.env
+    depends_on:
+      - zookeeper
+  tb-edge1:
+    env_file:
+      - ../queue-kafka.env
+    depends_on:
+      - kafka
+  tb-edge2:
+    env_file:
+      - ../queue-kafka.env
+    depends_on:
+      - kafka
+  tb-edge3:
+    env_file:
+      - ../queue-kafka.env
+    depends_on:
+      - kafka
