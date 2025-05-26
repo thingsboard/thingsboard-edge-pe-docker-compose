@@ -1,4 +1,3 @@
-#!/bin/bash
 #
 # ThingsBoard, Inc. ("COMPANY") CONFIDENTIAL
 #
@@ -30,48 +29,40 @@
 # OR TO MANUFACTURE, USE, OR SELL ANYTHING THAT IT  MAY DESCRIBE, IN WHOLE OR IN PART.
 #
 
-set -e
 
-source compose-utils.sh
+# my global config
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  evaluation_interval: 15s # By default, scrape targets every 15 seconds.
+  # scrape_timeout is set to the global default (10s).
 
-COMPOSE_VERSION=$(composeVersion) || exit $?
+  # Attach these labels to any time series or alerts when communicating with
+  # external systems (federation, remote storage, Alertmanager).
+  external_labels:
+      monitor: 'tb_edge'
 
-ADDITIONAL_COMPOSE_QUEUE_ARGS=$(additionalComposeQueueArgs) || exit $?
 
-ADDITIONAL_COMPOSE_ARGS=$(additionalComposeArgs) || exit $?
+# A scrape configuration containing exactly one endpoint to scrape:
+# Here it's Prometheus itself.
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
 
-ADDITIONAL_CACHE_ARGS=$(additionalComposeCacheArgs) || exit $?
+  - job_name: 'prometheus'
+    scrape_interval: 5s
+    static_configs:
+     - targets: ['localhost:9090']
 
-ADDITIONAL_STARTUP_SERVICES=$(additionalStartupServices) || exit $?
+  - job_name: 'tb-edge1'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ 'tb-edge1:8080' ]
 
-checkFolders --create || exit $?
+  - job_name: 'tb-edge2'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ 'tb-edge2:8080' ]
 
-COMPOSE_ARGS_PULL="\
-      -f docker-compose.yml ${ADDITIONAL_CACHE_ARGS} ${ADDITIONAL_COMPOSE_ARGS} \
-      pull \
-      tb-edge1"
-
-COMPOSE_ARGS_UP="\
-      -f docker-compose.yml ${ADDITIONAL_CACHE_ARGS} ${ADDITIONAL_COMPOSE_ARGS} \
-      up -d ${ADDITIONAL_STARTUP_SERVICES}"
-
-COMPOSE_ARGS_RUN="\
-      -f docker-compose.yml ${ADDITIONAL_CACHE_ARGS} ${ADDITIONAL_COMPOSE_ARGS} \
-      run --no-deps --rm -e UPGRADE_TB_EDGE=true \
-      tb-edge1"
-
-case $COMPOSE_VERSION in
-    V2)
-        docker compose $COMPOSE_ARGS_PULL
-        docker compose $COMPOSE_ARGS_UP
-        docker compose $COMPOSE_ARGS_RUN
-    ;;
-    V1)
-        docker-compose $COMPOSE_ARGS_PULL
-        docker-compose $COMPOSE_ARGS_UP
-        docker-compose $COMPOSE_ARGS_RUN
-    ;;
-    *)
-        # unknown option
-    ;;
-esac
+  - job_name: 'tb-edge3'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ 'tb-edge3:8080' ]
